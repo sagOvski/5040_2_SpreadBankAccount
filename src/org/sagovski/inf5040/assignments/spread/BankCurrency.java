@@ -14,6 +14,10 @@ public final class BankCurrency {
 		this.currencyCode = currencyCode;
 	}
 
+	private void setCurrencyAmount(final BigDecimal currencyAmount) {
+		this.currencyAmount = currencyAmount.setScale(2, BigDecimal.ROUND_HALF_UP);
+	}
+
 	public BigDecimal getCurrencyAmount() {
 		return currencyAmount;
 	}
@@ -25,7 +29,7 @@ public final class BankCurrency {
 	public BankCurrency add(final BankCurrency addAmount) {
 		final String errorMsg = "";
 		Assert.assertTrue(errorMsg, addAmount.currencyCode == this.currencyCode);
-		currencyAmount = currencyAmount.add(addAmount.getCurrencyAmount());
+		this.setCurrencyAmount(currencyAmount.add(addAmount.getCurrencyAmount()));
 		return this;
 	}
 
@@ -33,8 +37,13 @@ public final class BankCurrency {
 		final String errorMsg = "";
 		Assert.assertTrue(errorMsg, removeAmount.currencyCode == this.currencyCode);
 		Assert.assertTrue(this.getCurrencyAmount().compareTo(removeAmount.getCurrencyAmount()) >= 0);
-		currencyAmount = currencyAmount.subtract(removeAmount.getCurrencyAmount());
+		this.setCurrencyAmount(currencyAmount.subtract(removeAmount.getCurrencyAmount()));
 		return this;
+	}
+
+	public static BankCurrency toObject(final String strBankCurrency) {
+		String[] tokens = strBankCurrency.split(" ");
+		return new BankCurrency(new BigDecimal(tokens[0]), CurrencyCode.valueOf(tokens[1]));
 	}
 
 	@Override

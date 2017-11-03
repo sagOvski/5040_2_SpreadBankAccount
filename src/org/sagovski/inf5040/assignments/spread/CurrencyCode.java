@@ -18,4 +18,5 @@ public enum CurrencyCode {
 	static public BigDecimal getExchangeRate(CurrencyCode from, CurrencyCode to) {
 		return exchangeRates[from.ordinal()][to.ordinal()];
 	}
+
 }
