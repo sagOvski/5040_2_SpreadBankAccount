@@ -1,12 +1,18 @@
 package org.sagovski.inf5040.assignments.spread;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Scanner;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,9 +30,15 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	private final String HOST_NAME = "127.0.0.1";
 	private final String GROUP_NAME = "Captivators";
+
+	private final static File INPUT_FILE = new File(PathUtils.getAbsolutePath("input.txt"));
+	private final String BANK_PASS_BOOK = PathUtils.getAbsolutePath("bank_pass_book.txt");
+
 	private final static int INTENDED_REPLICA_COUNT = 2;
 
 	private static int actualReplicaCount = 0;
+
+	private String connectionId = "";
 
 	private SpreadConnection spreadConnection;
 	private SpreadGroup spreadGroup;
@@ -39,7 +51,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		spreadConnection = new SpreadConnection();
 		spreadGroup = new SpreadGroup();
 		Random random = new Random();
-		String connectionId = Integer.toString(random.nextInt(1000));
+		connectionId = Integer.toString(random.nextInt(1000));
 
 		try {
 			spreadConnection.connect(InetAddress.getByName(HOST_NAME), 0, connectionId, false, true);
@@ -62,63 +74,79 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 				continue;
 			}
 		}
-		List<String> ins = manager.getBankInstructionsFromFile(new File(""));
+		List<String> ins = manager.getBankInstructionsFromFile(INPUT_FILE);
 		for (String in : ins) {
-			manager.executeInstruction(in);
+			manager.executeInstruction(in, true);
 		}
 
 	}
 
 	public List<String> getBankInstructionsFromFile(final File commandsInputFile) {
 		List<String> instructions = new ArrayList<String>();
-		instructions.add("deposit 100");
-		instructions.add("withdraw 20");
-		instructions.add("addinterest 10");
-		instructions.add("sleep 10");
+		try (Scanner scanner = new Scanner(INPUT_FILE)) {
+			while (scanner.hasNextLine()) {
+				instructions.add(scanner.nextLine());
+			}
+		} catch (FileNotFoundException e) {
+			logger.error(ExceptionUtils.getStrStackTrace(e));
+			e.printStackTrace();
+			System.exit(1);
+		}
 		return instructions;
 	}
 
 	@Override
-	public void executeInstruction(final String strBankInstruction) {
+	public void executeInstruction(final String strBankInstruction, boolean shouldPropagateInstruction) {
 		final String tokens[] = strBankInstruction.split(" ");
 		final String command = tokens[0];
 		switch (command) {
 
 		case "balance":
-			String balEnquiryMsg = String.format("Current balance in the account is: %s",
+			String balEnquiryMsg = String.format("Current balance in the account is: %s\n",
 					bankAccount.getAccountBalance().toString());
 			logger.info(balEnquiryMsg);
+			try {
+				Files.write(Paths.get(BANK_PASS_BOOK), balEnquiryMsg.getBytes(), StandardOpenOption.APPEND);
+			} catch (IOException e) {
+				logger.error(ExceptionUtils.getStrStackTrace(e));
+				e.printStackTrace();
+				System.exit(1);
+			}
 			break;
 
 		case "deposit":
 			BankCurrency depositAmount = new BankCurrency(new BigDecimal(tokens[1]),
 					this.bankAccount.getAccountBalance().getCurrencyCode());
 			bankAccount.deposit(depositAmount);
-			this.notifyReplicas(strBankInstruction);
+			if (shouldPropagateInstruction)
+				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "withdraw":
 			BankCurrency withdrawalAmount = new BankCurrency(new BigDecimal(tokens[1]),
 					this.bankAccount.getAccountBalance().getCurrencyCode());
 			bankAccount.withdraw(withdrawalAmount);
-			this.notifyReplicas(strBankInstruction);
+			if (shouldPropagateInstruction)
+				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "exchange":
 			CurrencyCode fromCurCode = CurrencyCode.valueOf(tokens[1]);
 			CurrencyCode toCurCode = CurrencyCode.valueOf(tokens[2]);
 			bankAccount.exchange(fromCurCode, toCurCode);
-			this.notifyReplicas(strBankInstruction);
+			if (shouldPropagateInstruction)
+				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "sleep":
 			bankAccount.sleep(Integer.parseInt(tokens[1]));
 			break;
 
-		case "addinterest":
+		case "addInterest":
 			BigDecimal interestPercent = new BigDecimal(tokens[1]);
 			bankAccount.addInterest(interestPercent);
-			this.notifyReplicas(strBankInstruction);
+			if (shouldPropagateInstruction)
+				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "memberinfo":
@@ -134,6 +162,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 	public void notifyReplicas(final String bankCommand) {
 		SpreadMessage notification = new SpreadMessage();
 		notification.addGroup(spreadGroup);
+		notification.setSafe();
 		notification.setData(bankCommand.getBytes());
 		try {
 			spreadConnection.multicast(notification);
@@ -160,8 +189,10 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	public void handleRegularNotification(final SpreadMessage notification) {
 		String msg = new String(notification.getData());
-		logger.info("Executing remote instruction..! " + msg);
-		this.executeInstruction(msg);
+		if (!notification.getSender().toString().split("#")[1].trim().equals(connectionId)) {
+			logger.info("Executing remote instruction..! " + msg);
+			this.executeInstruction(msg, false);
+		}
 	}
 
 	public void handleMembershipNotification(final SpreadMessage notification) {

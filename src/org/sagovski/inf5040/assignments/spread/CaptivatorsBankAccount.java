@@ -15,7 +15,6 @@ public class CaptivatorsBankAccount implements BankAccount {
 	public CaptivatorsBankAccount() {
 		accountBalance = new BankCurrency(BigDecimal.ZERO, CurrencyCode.NOK);
 		logger.info("Client initialized with accountBalance: " + accountBalance.toString());
-
 	}
 
 	@Override
@@ -53,7 +52,8 @@ public class CaptivatorsBankAccount implements BankAccount {
 				"exchange operation should happen on different currencyCodes, but happening with same currencyCode '%s'!!",
 				fromCurrencyCode.toString());
 		logger.error(sameCurCodeErrorMsg);
-		Assert.assertTrue(sameCurCodeErrorMsg, fromCurrencyCode == this.accountBalance.getCurrencyCode());
+		Assert.assertTrue(sameCurCodeErrorMsg, toCurrencyCode != this.accountBalance.getCurrencyCode());
+		Assert.assertTrue(fromCurrencyCode == this.accountBalance.getCurrencyCode());
 
 		BigDecimal exchangeRate = CurrencyCode.getExchangeRate(fromCurrencyCode, toCurrencyCode);
 		BankCurrency convertedBankCurrency = new BankCurrency(

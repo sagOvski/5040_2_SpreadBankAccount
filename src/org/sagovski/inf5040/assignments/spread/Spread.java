@@ -41,9 +41,9 @@ public class Spread {
 //		 e.printStackTrace();
 //		 }
 
-		CaptivatorsBankAccount account = new CaptivatorsBankAccount();
-		account.deposit(new BankCurrency(BigDecimal.TEN, CurrencyCode.NOK));
-		System.out.println(account.getAccountBalance().toString());
+//		CaptivatorsBankAccount account = new CaptivatorsBankAccount();
+//		account.deposit(new BankCurrency(BigDecimal.TEN, CurrencyCode.NOK));
+//		System.out.println(account.getAccountBalance().toString());
 //		account.sleep(new Long(10));
 	}
 }

@@ -1,0 +1,23 @@
+deposit 5000
+sleep 1
+addInterest 10
+sleep 1
+deposit 500
+sleep 1
+balance
+sleep 1
+exchange NOK USD
+sleep 1
+balance
+sleep 1
+deposit 200
+sleep 1
+balance
+sleep 1 
+exchange USD EUR
+sleep 1
+balance
+sleep 1
+exchange EUR USD
+sleep 1
+balance
