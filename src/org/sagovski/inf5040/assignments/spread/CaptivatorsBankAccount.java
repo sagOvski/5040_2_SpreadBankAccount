@@ -1,40 +1,21 @@
 package org.sagovski.inf5040.assignments.spread;
 
 import java.math.BigDecimal;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Random;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 
-import spread.BasicMessageListener;
-import spread.SpreadConnection;
-import spread.SpreadException;
-import spread.SpreadGroup;
-import spread.SpreadMessage;
+public class CaptivatorsBankAccount implements BankAccount {
 
-public class CaptivatorsBankAccount implements BankAccount, BasicMessageListener {
-
-	private final String HOST_NAME = "localhost";
-	private final String GROUP_NAME = "Captivators";
+	private static final Logger logger = LogManager.getLogger(CaptivatorsBankAccount.class);
 
 	private BankCurrency accountBalance;
-	private SpreadConnection spreadConnection;
-	private SpreadGroup spreadGroup;
 
 	public CaptivatorsBankAccount() {
-		Random random = new Random();
-		int randomInt = random.nextInt(111);
-		spreadConnection = new SpreadConnection();
-		spreadGroup = new SpreadGroup();
+		accountBalance = new BankCurrency(BigDecimal.ZERO, CurrencyCode.NOK);
+		logger.info("Client initialized with accountBalance: " + accountBalance.toString());
 
-		try {
-			spreadConnection.connect(InetAddress.getByName(HOST_NAME), 0, GROUP_NAME + randomInt, false, true);
-			spreadGroup.join(spreadConnection, GROUP_NAME);
-			spreadConnection.add(this);
-		} catch (UnknownHostException | SpreadException e) {
-			e.printStackTrace();
-		}
 	}
 
 	@Override
@@ -44,72 +25,78 @@ public class CaptivatorsBankAccount implements BankAccount, BasicMessageListener
 
 	private void setAccountBalance(final BankCurrency updatedAccountBalance) {
 		this.accountBalance = updatedAccountBalance;
-		this.notifyReplicas();
 	}
 
 	@Override
 	public BankCurrency deposit(final BankCurrency depositAmount) {
+		logger.info(String.format("Balance before depositing: %s", this.accountBalance.toString()));
 		this.setAccountBalance(accountBalance.add(depositAmount));
+		logger.info(
+				String.format("Deposited '%s', new balance: %s", depositAmount.toString(), accountBalance.toString()));
+
 		return accountBalance;
 	}
 
 	@Override
 	public BankCurrency withdraw(final BankCurrency withdrawAmount) {
+		logger.info(String.format("Balance before withdrawing: %s", this.accountBalance.toString()));
 		this.setAccountBalance(accountBalance.remove(withdrawAmount));
+		logger.info(
+				String.format("Withdrew '%s', new balance: %s", withdrawAmount.toString(), accountBalance.toString()));
+
 		return accountBalance;
 	}
 
 	@Override
 	public BankCurrency exchange(final CurrencyCode fromCurrencyCode, final CurrencyCode toCurrencyCode) {
-		String errorMsg = "";
-		Assert.assertTrue(errorMsg, fromCurrencyCode == this.accountBalance.getCurrencyCode());
+		String sameCurCodeErrorMsg = String.format(
+				"exchange operation should happen on different currencyCodes, but happening with same currencyCode '%s'!!",
+				fromCurrencyCode.toString());
+		logger.error(sameCurCodeErrorMsg);
+		Assert.assertTrue(sameCurCodeErrorMsg, fromCurrencyCode == this.accountBalance.getCurrencyCode());
 
 		BigDecimal exchangeRate = CurrencyCode.getExchangeRate(fromCurrencyCode, toCurrencyCode);
 		BankCurrency convertedBankCurrency = new BankCurrency(
 				this.accountBalance.getCurrencyAmount().multiply(exchangeRate), toCurrencyCode);
 
+		logger.info(String.format("Balance before exchange: %s", this.accountBalance.toString()));
 		this.setAccountBalance(convertedBankCurrency);
+		logger.info(String.format("Balance after successful exchange: %s", this.accountBalance.toString()));
 
 		return convertedBankCurrency;
 	}
 
 	private BankCurrency getInterestAmount(final BankCurrency accountBalance, final BigDecimal interestPercent) {
-		return null;
+		Assert.assertNotNull(accountBalance);
+
+		BankCurrency interestAmount = new BankCurrency(
+				accountBalance.getCurrencyAmount().multiply(interestPercent.divide(BigDecimal.valueOf(100))),
+				accountBalance.getCurrencyCode());
+		logger.info(String.format("Calculated interest is '%s' for amount '%s' with interest percent '%s'",
+				interestAmount.toString(), accountBalance.toString(), interestPercent.toString()));
+		return interestAmount;
 	}
 
 	@Override
-	public BankCurrency addInterest(BigDecimal interestPercent) {
+	public BankCurrency addInterest(final BigDecimal interestPercent) {
+		Assert.assertNotNull(interestPercent);
+
 		BankCurrency interest = this.getInterestAmount(accountBalance, interestPercent);
 		this.setAccountBalance(accountBalance.add(interest));
+		logger.info(String.format("Updated balance after adding interest: '%s'", this.accountBalance.toString()));
 		return accountBalance;
 	}
 
 	@Override
-	public void notifyReplicas() {
-		SpreadMessage notification = new SpreadMessage();
-		notification.addGroup(spreadGroup);
-		notification.setData(accountBalance.toString().getBytes());
+	public void sleep(int seconds) {
 		try {
-			spreadConnection.multicast(notification);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public void sleep(Long seconds) {
-		try {
+			logger.info(String.format("Sleeping for %d seconds!", seconds));
 			Thread.sleep(seconds * 1000);
+			logger.info("Awaken from sleep!");
 		} catch (InterruptedException e) {
+			logger.error(ExceptionUtils.getStrStackTrace(e));
 			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public void messageReceived(final SpreadMessage notification) {
-		if (notification.isRegular()) {
-			final String message = new String(notification.getData());
-			this.setAccountBalance(BankCurrency.toObject(message));
+			System.exit(1);
 		}
 	}
 

@@ -27,16 +27,22 @@ public final class BankCurrency {
 	}
 
 	public BankCurrency add(final BankCurrency addAmount) {
-		final String errorMsg = "";
+		final String errorMsg = String.format("currencyCode %s is being added to currencyCode %s",
+				addAmount.getCurrencyCode().toString(), this.currencyCode);
 		Assert.assertTrue(errorMsg, addAmount.currencyCode == this.currencyCode);
 		this.setCurrencyAmount(currencyAmount.add(addAmount.getCurrencyAmount()));
 		return this;
 	}
 
 	public BankCurrency remove(final BankCurrency removeAmount) {
-		final String errorMsg = "";
-		Assert.assertTrue(errorMsg, removeAmount.currencyCode == this.currencyCode);
-		Assert.assertTrue(this.getCurrencyAmount().compareTo(removeAmount.getCurrencyAmount()) >= 0);
+		final String codeMismatchErrorMsg = String.format("currencyCode %s is being removed from currencyCode %s",
+				removeAmount.getCurrencyCode().toString(), this.currencyCode);
+		Assert.assertTrue(codeMismatchErrorMsg, removeAmount.currencyCode == this.currencyCode);
+
+		final String insuffBalErrorMsg = String.format("removeAmount %s is greater than currencyAmount %s",
+				removeAmount.toString(), this.toString());
+		Assert.assertTrue(insuffBalErrorMsg, this.getCurrencyAmount().compareTo(removeAmount.getCurrencyAmount()) >= 0);
+
 		this.setCurrencyAmount(currencyAmount.subtract(removeAmount.getCurrencyAmount()));
 		return this;
 	}

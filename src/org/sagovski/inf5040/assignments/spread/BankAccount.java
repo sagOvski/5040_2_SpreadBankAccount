@@ -14,10 +14,6 @@ public interface BankAccount {
 
 	public BankCurrency addInterest(final BigDecimal interestPercent);
 
-	/**
-	 * To notify all the replicas, of any changes to the accountBalance
-	 */
-	public void notifyReplicas();
+	public void sleep(final int seconds);
 
-	public void sleep(final Long seconds);
 }

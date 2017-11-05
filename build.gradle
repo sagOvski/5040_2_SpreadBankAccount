@@ -3,9 +3,18 @@ apply plugin: 'eclipse'
 
 repositories {
 	mavenCentral()
+	flatDir {
+       dirs 'dependencies'
+	}
+	
 }
 
 dependencies {
+  compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.9.1'
+  compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.9.1'
+  
+  compile name: 'spread-4.4.0'
+  
   testCompile 'junit:junit:4.12'
 }
 
