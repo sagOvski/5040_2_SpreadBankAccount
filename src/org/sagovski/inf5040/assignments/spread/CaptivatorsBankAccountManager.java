@@ -74,9 +74,14 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 				continue;
 			}
 		}
-		List<String> ins = manager.getBankInstructionsFromFile(INPUT_FILE);
-		for (String in : ins) {
-			manager.executeInstruction(in, true);
+		if (INPUT_FILE.exists()) {
+			List<String> ins = manager.getBankInstructionsFromFile(INPUT_FILE);
+			for (String in : ins) {
+				manager.executeInstruction(in, true);
+			}
+		} else {
+			while (true)
+				;
 		}
 
 	}
@@ -105,6 +110,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			String balEnquiryMsg = String.format("Current balance in the account is: %s\n",
 					bankAccount.getAccountBalance().toString());
 			logger.info(balEnquiryMsg);
+			if (shouldPropagateInstruction)
+				this.notifyReplicas(strBankInstruction);
 			try {
 				Files.write(Paths.get(BANK_PASS_BOOK), balEnquiryMsg.getBytes(), StandardOpenOption.APPEND);
 			} catch (IOException e) {
