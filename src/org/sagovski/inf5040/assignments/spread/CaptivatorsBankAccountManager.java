@@ -28,7 +28,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	private static final Logger logger = LogManager.getLogger(CaptivatorsBankAccountManager.class);
 
-	private static final File BANK_PASS_BOOK = new File(PathUtils.getAbsolutePath("bank_pass_book.txt"));
+	private String BANK_PASS_BOOK_PATH = PathUtils.getAbsolutePath("bank_pass_book_");
+	private File bankPassBook;
 
 	private static int actualReplicaCount = 0;
 
@@ -38,6 +39,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 	private SpreadGroup spreadGroup;
 
 	private CaptivatorsBankAccount bankAccount;
+
+	private SpreadGroup[] groupInfo;
 
 	public CaptivatorsBankAccountManager(final String hostName, final String groupName) {
 		bankAccount = new CaptivatorsBankAccount();
@@ -58,9 +61,21 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		}
 		logger.info(String.format("Client connected with server '%s' and joined group '%s' with connectionId '%s'",
 				hostName, groupName, connectionId));
+
+		// Create a new bank pass book with name appended with connectionId
+		try {
+			BANK_PASS_BOOK_PATH = BANK_PASS_BOOK_PATH + connectionId;
+			bankPassBook = new File(BANK_PASS_BOOK_PATH);
+			bankPassBook.createNewFile();
+			logger.info("Created a new bank pass book: " + bankPassBook.getAbsolutePath());
+		} catch (IOException e) {
+			logger.error(ExceptionUtils.getStrStackTrace(e));
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 
-	public static void main(String args[]) throws IOException {
+	public static void main(String args[]) {
 		final String hostName = args[0];
 		final String groupName = args[1];
 		int intendedReplicaCount = Integer.parseInt(args[2]);
@@ -69,13 +84,12 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		CaptivatorsBankAccountManager manager = new CaptivatorsBankAccountManager(hostName, groupName);
 		if (manager.spreadConnection.isConnected()) {
 			while (actualReplicaCount < intendedReplicaCount) {
+				logger.info(String.format("Expected replicaCount is '%d', but only '%d' joined", intendedReplicaCount,
+						actualReplicaCount));
 				manager.bankAccount.sleep(2);
 				continue;
 			}
 		}
-		// Delete old one and create a new bank pass book
-		BANK_PASS_BOOK.delete();
-		BANK_PASS_BOOK.createNewFile();
 
 		if (inputFile.exists()) {
 			List<String> ins = manager.getBankInstructionsFromFile(inputFile);
@@ -119,7 +133,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			if (shouldPropagateInstruction)
 				this.notifyReplicas(strBankInstruction);
 			try {
-				Files.write(Paths.get(BANK_PASS_BOOK.getAbsolutePath()), balEnquiryMsg.getBytes(),
+				Files.write(Paths.get(bankPassBook.getAbsolutePath()), balEnquiryMsg.getBytes(),
 						StandardOpenOption.APPEND);
 			} catch (IOException e) {
 				logger.error(ExceptionUtils.getStrStackTrace(e));
@@ -164,6 +178,10 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			break;
 
 		case "memberinfo":
+			logger.info("Printing groupInfo!");
+			for (SpreadGroup host : groupInfo) {
+				logger.info(host.toString());
+			}
 			break;
 
 		default:
@@ -214,6 +232,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		logger.info("Member added " + msg);
 		MembershipInfo info = notification.getMembershipInfo();
 		actualReplicaCount = info.getMembers().length;
+		groupInfo = info.getMembers();
 	}
 
 }
