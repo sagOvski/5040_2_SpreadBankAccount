@@ -28,13 +28,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	private static final Logger logger = LogManager.getLogger(CaptivatorsBankAccountManager.class);
 
-	private final String HOST_NAME = "127.0.0.1";
-	private final String GROUP_NAME = "Captivators";
-
-	private final static File INPUT_FILE = new File(PathUtils.getAbsolutePath("input.txt"));
 	private final String BANK_PASS_BOOK = PathUtils.getAbsolutePath("bank_pass_book.txt");
-
-	private final static int INTENDED_REPLICA_COUNT = 2;
 
 	private static int actualReplicaCount = 0;
 
@@ -45,7 +39,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	private CaptivatorsBankAccount bankAccount;
 
-	public CaptivatorsBankAccountManager() {
+	public CaptivatorsBankAccountManager(final String hostName, final String groupName) {
 		bankAccount = new CaptivatorsBankAccount();
 
 		spreadConnection = new SpreadConnection();
@@ -54,8 +48,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		connectionId = Integer.toString(random.nextInt(1000));
 
 		try {
-			spreadConnection.connect(InetAddress.getByName(HOST_NAME), 0, connectionId, false, true);
-			spreadGroup.join(spreadConnection, GROUP_NAME);
+			spreadConnection.connect(InetAddress.getByName(hostName), 0, connectionId, false, true);
+			spreadGroup.join(spreadConnection, groupName);
 			spreadConnection.add(this);
 		} catch (UnknownHostException | SpreadException e) {
 			logger.error(ExceptionUtils.getStrStackTrace(e));
@@ -63,32 +57,40 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			System.exit(1);
 		}
 		logger.info(String.format("Client connected with server '%s' and joined group '%s' with connectionId '%s'",
-				HOST_NAME, GROUP_NAME, connectionId));
+				hostName, groupName, connectionId));
 	}
 
 	public static void main(String args[]) {
-		CaptivatorsBankAccountManager manager = new CaptivatorsBankAccountManager();
+		final String hostName = args[0];
+		final String groupName = args[1];
+		int intendedReplicaCount = Integer.parseInt(args[2]);
+
+		File inputFile = args.length > 4 ? new File(args[3]) : new File("");
+		CaptivatorsBankAccountManager manager = new CaptivatorsBankAccountManager(hostName, groupName);
 		if (manager.spreadConnection.isConnected()) {
-			while (actualReplicaCount < INTENDED_REPLICA_COUNT) {
+			while (actualReplicaCount < intendedReplicaCount) {
 				manager.bankAccount.sleep(2);
 				continue;
 			}
 		}
-		if (INPUT_FILE.exists()) {
-			List<String> ins = manager.getBankInstructionsFromFile(INPUT_FILE);
+		if (inputFile.exists()) {
+			List<String> ins = manager.getBankInstructionsFromFile(inputFile);
 			for (String in : ins) {
 				manager.executeInstruction(in, true);
 			}
 		} else {
-			while (true)
-				;
+			try (Scanner scanner = new Scanner(System.in)) {
+				while (true) {
+					String strInstruction = scanner.nextLine();
+					manager.executeInstruction(strInstruction, true);
+				}
+			}
 		}
-
 	}
 
 	public List<String> getBankInstructionsFromFile(final File commandsInputFile) {
 		List<String> instructions = new ArrayList<String>();
-		try (Scanner scanner = new Scanner(INPUT_FILE)) {
+		try (Scanner scanner = new Scanner(commandsInputFile)) {
 			while (scanner.hasNextLine()) {
 				instructions.add(scanner.nextLine());
 			}
