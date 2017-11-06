@@ -28,7 +28,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	private static final Logger logger = LogManager.getLogger(CaptivatorsBankAccountManager.class);
 
-	private final String BANK_PASS_BOOK = PathUtils.getAbsolutePath("bank_pass_book.txt");
+	private static final File BANK_PASS_BOOK = new File(PathUtils.getAbsolutePath("bank_pass_book.txt"));
 
 	private static int actualReplicaCount = 0;
 
@@ -60,12 +60,12 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 				hostName, groupName, connectionId));
 	}
 
-	public static void main(String args[]) {
+	public static void main(String args[]) throws IOException {
 		final String hostName = args[0];
 		final String groupName = args[1];
 		int intendedReplicaCount = Integer.parseInt(args[2]);
 
-		File inputFile = args.length > 4 ? new File(args[3]) : new File("");
+		File inputFile = args.length > 3 ? new File(args[3]) : new File("");
 		CaptivatorsBankAccountManager manager = new CaptivatorsBankAccountManager(hostName, groupName);
 		if (manager.spreadConnection.isConnected()) {
 			while (actualReplicaCount < intendedReplicaCount) {
@@ -73,6 +73,10 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 				continue;
 			}
 		}
+		// Delete old one and create a new bank pass book
+		BANK_PASS_BOOK.delete();
+		BANK_PASS_BOOK.createNewFile();
+
 		if (inputFile.exists()) {
 			List<String> ins = manager.getBankInstructionsFromFile(inputFile);
 			for (String in : ins) {
@@ -115,7 +119,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			if (shouldPropagateInstruction)
 				this.notifyReplicas(strBankInstruction);
 			try {
-				Files.write(Paths.get(BANK_PASS_BOOK), balEnquiryMsg.getBytes(), StandardOpenOption.APPEND);
+				Files.write(Paths.get(BANK_PASS_BOOK.getAbsolutePath()), balEnquiryMsg.getBytes(),
+						StandardOpenOption.APPEND);
 			} catch (IOException e) {
 				logger.error(ExceptionUtils.getStrStackTrace(e));
 				e.printStackTrace();
