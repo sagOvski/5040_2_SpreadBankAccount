@@ -21,3 +21,4 @@ sleep 1
 exchange EUR USD
 sleep 1
 balance
+exit
