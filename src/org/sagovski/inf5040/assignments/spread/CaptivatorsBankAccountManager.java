@@ -184,6 +184,11 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			}
 			break;
 
+		case "exit":
+			logger.info("Exiting!");
+			if (shouldPropagateInstruction)
+				this.notifyReplicas(strBankInstruction);
+			System.exit(0);
 		default:
 			final String exceptionMsg = String.format("Unknown operation: '%s'! Exiting!", strBankInstruction);
 			throw new RuntimeException(exceptionMsg);
