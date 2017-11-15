@@ -189,6 +189,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			if (shouldPropagateInstruction)
 				this.notifyReplicas(strBankInstruction);
 			System.exit(0);
+
 		default:
 			final String exceptionMsg = String.format("Unknown operation: '%s'! Exiting!", strBankInstruction);
 			throw new RuntimeException(exceptionMsg);
@@ -199,8 +200,9 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 	public void notifyReplicas(final String bankCommand) {
 		SpreadMessage notification = new SpreadMessage();
 		notification.addGroup(spreadGroup);
-		notification.setSafe();
 		notification.setData(bankCommand.getBytes());
+		notification.setSafe();
+		notification.setReliable();
 		try {
 			spreadConnection.multicast(notification);
 		} catch (Exception e) {
@@ -213,7 +215,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 	@Override
 	public void messageReceived(final SpreadMessage notification) {
 		logger.info("Notification received!! " + new String(notification.getData()));
-		if (notification.isRegular()) {
+		if (notification.isSafe() || notification.isReliable()) {
 			this.handleRegularNotification(notification);
 		} else if (notification.isMembership()) {
 			this.handleMembershipNotification(notification);
