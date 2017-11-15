@@ -191,8 +191,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			System.exit(0);
 
 		default:
-			final String exceptionMsg = String.format("Unknown operation: '%s'! Exiting!", strBankInstruction);
-			throw new RuntimeException(exceptionMsg);
+			final String invalidOpMsg = String.format("Unknown operation: '%s'! Please enter a valid operation!", strBankInstruction);
+			logger.error(invalidOpMsg);
 		}
 	}
 

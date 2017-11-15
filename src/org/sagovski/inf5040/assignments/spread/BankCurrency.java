@@ -2,9 +2,13 @@ package org.sagovski.inf5040.assignments.spread;
 
 import java.math.BigDecimal;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 
 public final class BankCurrency {
+
+	private static final Logger logger = LogManager.getLogger(BankCurrency.class);
 
 	private BigDecimal currencyAmount;
 	private CurrencyCode currencyCode;
@@ -35,13 +39,21 @@ public final class BankCurrency {
 	}
 
 	public BankCurrency remove(final BankCurrency removeAmount) {
-		final String codeMismatchErrorMsg = String.format("currencyCode %s is being removed from currencyCode %s",
-				removeAmount.getCurrencyCode().toString(), this.currencyCode);
-		Assert.assertTrue(codeMismatchErrorMsg, removeAmount.currencyCode == this.currencyCode);
+		if (removeAmount.currencyCode != this.currencyCode) {
+			final String codeMismatchErrorMsg = String.format(
+					"InvalidOperation - currencyCode %s is being removed from currencyCode %s - Returning the previous valid amount",
+					removeAmount.getCurrencyCode().toString(), this.currencyCode);
+			logger.error(codeMismatchErrorMsg);
+			return this;
+		}
 
-		final String insuffBalErrorMsg = String.format("removeAmount %s is greater than currencyAmount %s",
-				removeAmount.toString(), this.toString());
-		Assert.assertTrue(insuffBalErrorMsg, this.getCurrencyAmount().compareTo(removeAmount.getCurrencyAmount()) >= 0);
+		if (this.getCurrencyAmount().compareTo(removeAmount.getCurrencyAmount()) < 0) {
+			final String insuffBalErrorMsg = String.format(
+					"InvalidOperation - removeAmount %s is greater than currencyAmount %s - Returning the previous valid amount",
+					removeAmount.toString(), this.toString());
+			logger.error(insuffBalErrorMsg);
+			return this;
+		}
 
 		this.setCurrencyAmount(currencyAmount.subtract(removeAmount.getCurrencyAmount()));
 		return this;
