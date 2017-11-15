@@ -202,7 +202,6 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		notification.addGroup(spreadGroup);
 		notification.setData(bankCommand.getBytes());
 		notification.setSafe();
-		notification.setReliable();
 		try {
 			spreadConnection.multicast(notification);
 		} catch (Exception e) {
