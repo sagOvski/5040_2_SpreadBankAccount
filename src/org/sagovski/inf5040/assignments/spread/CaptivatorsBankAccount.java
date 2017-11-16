@@ -48,12 +48,21 @@ public class CaptivatorsBankAccount implements BankAccount {
 
 	@Override
 	public BankCurrency exchange(final CurrencyCode fromCurrencyCode, final CurrencyCode toCurrencyCode) {
-		String sameCurCodeErrorMsg = String.format(
-				"exchange operation should happen on different currencyCodes, but happening with same currencyCode '%s'!!",
-				fromCurrencyCode.toString());
-		logger.error(sameCurCodeErrorMsg);
-		Assert.assertTrue(sameCurCodeErrorMsg, toCurrencyCode != this.accountBalance.getCurrencyCode());
-		Assert.assertTrue(fromCurrencyCode == this.accountBalance.getCurrencyCode());
+		if (toCurrencyCode == this.accountBalance.getCurrencyCode()) {
+			String sameCurCodeErrorMsg = String.format(
+					"*** exchange() operation should happen on different currencyCodes, but happening with same currencyCode '%s'!! *** \n"
+							+ "*** Not proceeding with the exchange operation, please enter a new valid operation!! *** ",
+					fromCurrencyCode.toString());
+			logger.error(sameCurCodeErrorMsg);
+			return this.getAccountBalance();
+		} else if (fromCurrencyCode != this.accountBalance.getCurrencyCode()) {
+			String diffFromCurCodeErrorMsg = String.format(
+					"*** fromCurrencyCode '%s' is different from bank account's currencyCode '%s'!! *** \n"
+							+ "*** Not proceeding with exchange operation, please enter currencyCode same as that of bankAccount!! *** ",
+					fromCurrencyCode.toString(), this.accountBalance.getCurrencyCode().toString());
+			logger.error(diffFromCurCodeErrorMsg);
+			return this.getAccountBalance();
+		}
 
 		BigDecimal exchangeRate = CurrencyCode.getExchangeRate(fromCurrencyCode, toCurrencyCode);
 		BankCurrency convertedBankCurrency = new BankCurrency(
@@ -79,7 +88,11 @@ public class CaptivatorsBankAccount implements BankAccount {
 
 	@Override
 	public BankCurrency addInterest(final BigDecimal interestPercent) {
-		Assert.assertNotNull(interestPercent);
+		if (null == interestPercent) {
+			logger.error(
+					"*** interestPercent can't be null, not proceeding with addInterest() operation, please provide valid interestPercent!! *** ");
+			return this.getAccountBalance();
+		}
 
 		BankCurrency interest = this.getInterestAmount(accountBalance, interestPercent);
 		this.setAccountBalance(accountBalance.add(interest));
