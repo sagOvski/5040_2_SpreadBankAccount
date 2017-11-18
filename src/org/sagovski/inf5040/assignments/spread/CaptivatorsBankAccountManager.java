@@ -203,7 +203,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 	@Override
 	public void messageReceived(final SpreadMessage notification) {
 		logger.info("Notification received!! " + new String(notification.getData()));
-		if (notification.isSafe() || notification.isReliable()) {
+		if (notification.isSafe() || notification.isAgreed()) {
 			this.handleRegularNotification(notification);
 		} else if (notification.isMembership()) {
 			this.handleMembershipNotification(notification);
