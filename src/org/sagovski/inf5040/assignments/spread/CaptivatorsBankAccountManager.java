@@ -92,15 +92,15 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		}
 
 		if (inputFile.exists()) {
-			List<String> ins = manager.getBankInstructionsFromFile(inputFile);
-			for (String in : ins) {
-				manager.executeInstruction(in, true);
+			List<String> instructions = manager.getBankInstructionsFromFile(inputFile);
+			for (String insruction : instructions) {
+				manager.notifyReplicas(insruction);
 			}
 		} else {
 			try (Scanner scanner = new Scanner(System.in)) {
 				while (true) {
-					String strInstruction = scanner.nextLine();
-					manager.executeInstruction(strInstruction, true);
+					String strInstruction = scanner.nextLine().trim();
+					manager.notifyReplicas(strInstruction);
 				}
 			}
 		}
@@ -121,7 +121,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 	}
 
 	@Override
-	public void executeInstruction(final String strBankInstruction, boolean shouldPropagateInstruction) {
+	public void executeInstruction(final String strBankInstruction) {
 		final String tokens[] = strBankInstruction.split(" ");
 		final String command = tokens[0];
 		switch (command) {
@@ -130,8 +130,6 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			String balEnquiryMsg = String.format("Current balance in the account is: %s\n",
 					bankAccount.getAccountBalance().toString());
 			logger.info(balEnquiryMsg);
-			if (shouldPropagateInstruction)
-				this.notifyReplicas(strBankInstruction);
 			try {
 				Files.write(Paths.get(bankPassBook.getAbsolutePath()), balEnquiryMsg.getBytes(),
 						StandardOpenOption.APPEND);
@@ -146,24 +144,18 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			BankCurrency depositAmount = new BankCurrency(new BigDecimal(tokens[1]),
 					this.bankAccount.getAccountBalance().getCurrencyCode());
 			bankAccount.deposit(depositAmount);
-			if (shouldPropagateInstruction)
-				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "withdraw":
 			BankCurrency withdrawalAmount = new BankCurrency(new BigDecimal(tokens[1]),
 					this.bankAccount.getAccountBalance().getCurrencyCode());
 			bankAccount.withdraw(withdrawalAmount);
-			if (shouldPropagateInstruction)
-				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "exchange":
 			CurrencyCode fromCurCode = CurrencyCode.valueOf(tokens[1]);
 			CurrencyCode toCurCode = CurrencyCode.valueOf(tokens[2]);
 			bankAccount.exchange(fromCurCode, toCurCode);
-			if (shouldPropagateInstruction)
-				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "sleep":
@@ -173,8 +165,6 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		case "addInterest":
 			BigDecimal interestPercent = new BigDecimal(tokens[1]);
 			bankAccount.addInterest(interestPercent);
-			if (shouldPropagateInstruction)
-				this.notifyReplicas(strBankInstruction);
 			break;
 
 		case "memberinfo":
@@ -186,22 +176,21 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 		case "exit":
 			logger.info("Exiting!");
-			if (shouldPropagateInstruction)
-				this.notifyReplicas(strBankInstruction);
 			System.exit(0);
 
 		default:
-			final String invalidOpMsg = String.format("Unknown operation: '%s'! Please enter a valid operation!", strBankInstruction);
+			final String invalidOpMsg = String.format("Unknown operation: '%s'! Please enter a valid operation!",
+					strBankInstruction);
 			logger.error(invalidOpMsg);
 		}
 	}
 
 	@Override
-	public void notifyReplicas(final String bankCommand) {
+	public void notifyReplicas(final String bankInstruction) {
 		SpreadMessage notification = new SpreadMessage();
 		notification.addGroup(spreadGroup);
-		notification.setData(bankCommand.getBytes());
-		notification.setSafe();
+		notification.setData(bankInstruction.getBytes());
+		notification.setAgreed();
 		try {
 			spreadConnection.multicast(notification);
 		} catch (Exception e) {
@@ -227,10 +216,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 
 	public void handleRegularNotification(final SpreadMessage notification) {
 		String msg = new String(notification.getData());
-		if (!notification.getSender().toString().split("#")[1].trim().equals(connectionId)) {
-			logger.info("Executing remote instruction..! " + msg);
-			this.executeInstruction(msg, false);
-		}
+		logger.info("Executing remote instruction..! " + msg);
+		this.executeInstruction(msg);
 	}
 
 	public void handleMembershipNotification(final SpreadMessage notification) {
