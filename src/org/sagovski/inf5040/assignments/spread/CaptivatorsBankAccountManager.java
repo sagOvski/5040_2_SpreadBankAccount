@@ -91,6 +91,11 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			}
 		}
 
+		// Reads instructions from the file and notifies multicasts the 
+		// it to all the systems in the group, since the sender is in the group
+		// as well, it also receives it and since notification.setSafe() ensures
+		// total order, all of the hosts in the group execute the instruction
+		// in an orderly fashion, resulting in the state for each instruction
 		if (inputFile.exists()) {
 			List<String> instructions = manager.getBankInstructionsFromFile(inputFile);
 			for (String insruction : instructions) {
@@ -190,7 +195,8 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 		SpreadMessage notification = new SpreadMessage();
 		notification.addGroup(spreadGroup);
 		notification.setData(bankInstruction.getBytes());
-		notification.setAgreed();
+		// Ensures total order of messages
+		notification.setSafe();
 		try {
 			spreadConnection.multicast(notification);
 		} catch (Exception e) {
