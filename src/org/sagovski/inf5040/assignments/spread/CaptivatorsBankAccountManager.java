@@ -91,7 +91,7 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 			}
 		}
 
-		// Reads instructions from the file and notifies multicasts the 
+		// Reads instructions from the file and notifies multicasts the
 		// it to all the systems in the group, since the sender is in the group
 		// as well, it also receives it and since notification.setSafe() ensures
 		// total order, all of the hosts in the group execute the instruction
@@ -108,6 +108,11 @@ public class CaptivatorsBankAccountManager implements BankAccountManager, BasicM
 					manager.notifyReplicas(strInstruction);
 				}
 			}
+		}
+
+		// This is to keep the client active after reading instructions from file
+		while (true) {
+			continue;
 		}
 	}
 
